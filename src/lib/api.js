@@ -1,10 +1,19 @@
 // Helper to get Supabase token
+
 async function getToken() {
   const { supabase } = await import('@/lib/supabase/client');
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token;
 }
-
+async function getToken() {
+  const { supabase } = await import('@/lib/supabase/client');
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // ADD THIS DEBUG LINE:
+  console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL);
+  
+  return session?.access_token;
+}
 // API client
 export const api = {
   async request(endpoint, options = {}) {
