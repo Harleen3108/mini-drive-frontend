@@ -9,7 +9,7 @@ async function getToken() {
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const backendUrl = 'https://mini-drive-backend-mzyb.onrender.com';
     
     const response = await fetch(`${backendUrl}${endpoint}`, {
       headers: {

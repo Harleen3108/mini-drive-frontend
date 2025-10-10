@@ -58,39 +58,72 @@ export function AuthForm() {
 
     try {
       if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
-            email,
-          password,
-        })
+  const { data: signUpData, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
 
-        if (error) {
-          setMessage(`Sign up failed: ${error.message}`)
-        } else {
-          setMessage('Sign up successful! You can now sign in.')
-          setIsSignUp(false)
-          setEmail('')
-          setPassword('')
-          setConfirmPassword('')
+  if (error) {
+    setMessage(`Sign up failed: ${error.message}`)
+  } else if (signUpData.user) {
+    // Automatically create profile for new user
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: signUpData.user.id,
+          email: email,
+          role: 'user', // default role
+          created_at: new Date().toISOString(),
         }
-      } else {
+      ])
 
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (error) {
-          setMessage(`Login failed: ${error.message}`)
-        } else {
-          setMessage('Login successful! Redirecting...')
-          setTimeout(() => router.push('/dashboard'), 1000)
-        }
-      }
-    } catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    } finally {
-      setLoading(false)
+    if (profileError) {
+      console.error('Profile creation error:', profileError)
     }
+
+    setMessage('Sign up successful! You can now sign in.')
+    setIsSignUp(false)
+    setEmail('')
+    setPassword('')
+    setConfirmPassword('')
+  }
+} else {
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (error) {
+    setMessage(`Login failed: ${error.message}`)
+  } else if (signInData.user) {
+    // Ensure profile exists for this user
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: signInData.user.id,
+          email: email,
+          role: 'user',
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      )
+
+    if (profileError) {
+      console.error('Profile upsert error:', profileError)
+    }
+
+    setMessage('Login successful! Redirecting...')
+    setTimeout(() => router.push('/dashboard'), 1000)
+  }
+}
+} catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+  setMessage(`Error: ${errorMessage}`);
+} finally {
+  setLoading(false)
+}
   }
   return (
     <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
