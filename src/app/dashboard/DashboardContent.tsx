@@ -275,39 +275,42 @@ export default function DashboardContent() {
     setShowShareModal(true);
   };
 
-  const executeShare = async () => {
+const executeShare = async () => {
   if (!selectedFile || !shareEmail) return;
 
   try {
-    console.log("Starting share process...");
-    console.log("File:", selectedFile.name);
-    console.log("Target email:", shareEmail);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      console.log("No session found");
-      return;
-    }
+    console.log("🔍 DEBUG: Looking for user:", shareEmail);
 
-    console.log("Looking for user with email:", shareEmail);
+    // Check ALL users in the profiles table
+    const { data: allUsers } = await supabase
+      .from('profiles')
+      .select('email, id, created_at')
+      .order('email');
+    
+    console.log("📋 ALL REGISTERED USERS:", allUsers);
 
+    // Try to find the specific user
     const { data: targetUser, error: userError } = await supabase
       .from("profiles")
       .select("id, email")
-      .eq("email", shareEmail)
+      .ilike("email", shareEmail)  // Case-insensitive search
       .single();
 
-    console.log("User lookup result:", targetUser);
-    console.log("User lookup error:", userError);
+    console.log("🎯 TARGET USER RESULT:", targetUser);
+    console.log("❌ USER ERROR:", userError);
 
     if (userError || !targetUser) {
+      console.log("🚫 USER NOT FOUND - Available users:", allUsers?.map(u => u.email));
       alert(
-        `User "${shareEmail}" is not registered yet! 🚫\n\nTo share files with them:\n\n1. Ask them to sign up at: ${window.location.origin}\n2. They must use the exact same email: ${shareEmail}\n3. Once registered, you can share files with them\n\nAfter they sign up, try sharing this file again! ✅`
+        `User "${shareEmail}" is not registered yet! 🚫\n\nAvailable users: ${allUsers?.map(u => u.email).join(', ')}`
       );
       return;
     }
+
+    // Rest of your sharing code...
 
     console.log("Found user:", targetUser);
     console.log("Creating share...");
