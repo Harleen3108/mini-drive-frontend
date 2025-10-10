@@ -58,8 +58,8 @@ export function AuthForm() {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
+      const { error } = await supabase.auth.signUp({
+            email,
           password,
         })
 
@@ -73,7 +73,8 @@ export function AuthForm() {
           setConfirmPassword('')
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
@@ -85,13 +86,12 @@ export function AuthForm() {
           setTimeout(() => router.push('/dashboard'), 1000)
         }
       }
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`)
+    } catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     } finally {
       setLoading(false)
     }
   }
-
   return (
     <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
       isDarkMode 
