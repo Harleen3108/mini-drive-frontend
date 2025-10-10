@@ -276,65 +276,67 @@ export default function DashboardContent() {
   };
 
   const executeShare = async () => {
-    if (!selectedFile || !shareEmail) return;
+  if (!selectedFile || !shareEmail) return;
 
-    try {
-      console.log("Starting share process...");
-      console.log("File:", selectedFile.name);
-      console.log("Target email:", shareEmail);
+  try {
+    console.log("Starting share process...");
+    console.log("File:", selectedFile.name);
+    console.log("Target email:", shareEmail);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("No session found");
-        return;
-      }
-
-      console.log("Looking for user with email:", shareEmail);
-
-      const { data: targetUser, error: userError } = await supabase
-        .from("profiles")
-        .select("id, email")
-        .eq("email", shareEmail)
-        .single();
-
-      console.log("User lookup result:", targetUser);
-      console.log("User lookup error:", userError);
-
-      if (userError || !targetUser) {
-        alert(`User "${shareEmail}" not found! Make sure they have signed up.`);
-        return;
-      }
-
-      console.log("Found user:", targetUser);
-      console.log("Creating share...");
-
-      const { error: shareError } = await supabase.from("file_shares").insert([
-        {
-          file_id: selectedFile.id,
-          shared_by: session.user.id,
-          shared_with: targetUser.id,
-          permission: sharePermission,
-        },
-      ]);
-
-      console.log("Share creation error:", shareError);
-
-      if (shareError) throw shareError;
-
-      alert(
-        `✅ File shared with ${shareEmail} (${sharePermission} permission)`
-      );
-      setShowShareModal(false);
-      setShareEmail("");
-      setSelectedFile(null);
-    } catch (error: unknown) {
-      console.error("Share failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Share failed';
-      alert("Share failed: " + errorMessage);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      console.log("No session found");
+      return;
     }
-  };
+
+    console.log("Looking for user with email:", shareEmail);
+
+    const { data: targetUser, error: userError } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .eq("email", shareEmail)
+      .single();
+
+    console.log("User lookup result:", targetUser);
+    console.log("User lookup error:", userError);
+
+    if (userError || !targetUser) {
+      alert(
+        `User "${shareEmail}" is not registered yet! 🚫\n\nTo share files with them:\n\n1. Ask them to sign up at: ${window.location.origin}\n2. They must use the exact same email: ${shareEmail}\n3. Once registered, you can share files with them\n\nAfter they sign up, try sharing this file again! ✅`
+      );
+      return;
+    }
+
+    console.log("Found user:", targetUser);
+    console.log("Creating share...");
+
+    const { error: shareError } = await supabase.from("file_shares").insert([
+      {
+        file_id: selectedFile.id,
+        shared_by: session.user.id,
+        shared_with: targetUser.id,
+        permission: sharePermission,
+      },
+    ]);
+
+    console.log("Share creation error:", shareError);
+
+    if (shareError) throw shareError;
+
+    alert(
+      `✅ File shared successfully with ${shareEmail}!\n\nPermission: ${sharePermission === "view" ? "View Only" : "Can Edit"}\n\nThey can find it in their "Shared Files" tab.`
+    );
+    setShowShareModal(false);
+    setShareEmail("");
+    setSelectedFile(null);
+  } catch (error: unknown) {
+    console.error("Share failed:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Share failed';
+    alert("Share failed: " + errorMessage);
+  }
+};
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
