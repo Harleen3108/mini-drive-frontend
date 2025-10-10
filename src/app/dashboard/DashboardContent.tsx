@@ -284,53 +284,43 @@ const executeShare = async () => {
 
     console.log("🔍 DEBUG: Looking for user:", shareEmail);
 
-    // Check ALL users in the profiles table
-    const { data: allUsers } = await supabase
-      .from('profiles')
-      .select('email, id, created_at')
-      .order('email');
+    // FIX: Call your backend API instead of Supabase directly
+    const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
+    const allUsers = await response.json();
     
-    console.log("📋 ALL REGISTERED USERS:", allUsers);
+    console.log("📋 ALL REGISTERED USERS FROM BACKEND:", allUsers);
 
-    // Try to find the specific user
-    const { data: targetUser, error: userError } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .ilike("email", shareEmail)  // Case-insensitive search
-      .single();
+    // Find the specific user from the backend response
 
-    console.log("🎯 TARGET USER RESULT:", targetUser);
-    console.log("❌ USER ERROR:", userError);
+    console.log("🎯 TARGET USER RESULT:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+      ));
 
-    if (userError || !targetUser) {
-      console.log("🚫 USER NOT FOUND - Available users:", allUsers?.map(u => u.email));
+    if (!allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+    )) {
+      console.log("🚫 USER NOT FOUND - Available users:", allUsers?.map((u: { email: any; }) => u.email));
       alert(
-        `User "${shareEmail}" is not registered yet! 🚫\n\nAvailable users: ${allUsers?.map(u => u.email).join(', ')}`
+        `User "${shareEmail}" is not registered yet! 🚫\n\nAvailable users: ${allUsers?.map((u: { email: any; }) => u.email).join(', ')}`
       );
       return;
     }
 
-    // Rest of your sharing code...
-
-    console.log("Found user:", targetUser);
-    console.log("Creating share...");
+    // Rest of your sharing code remains the same...
+    console.log("Found user:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+      ));
 
     const { error: shareError } = await supabase.from("file_shares").insert([
       {
         file_id: selectedFile.id,
         shared_by: session.user.id,
-        shared_with: targetUser.id,
+        shared_with: (allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+        )).id,
         permission: sharePermission,
       },
     ]);
 
-    console.log("Share creation error:", shareError);
-
     if (shareError) throw shareError;
 
-    alert(
-      `✅ File shared successfully with ${shareEmail}!\n\nPermission: ${sharePermission === "view" ? "View Only" : "Can Edit"}\n\nThey can find it in their "Shared Files" tab.`
-    );
+    alert(`✅ File shared successfully with ${shareEmail}!`);
     setShowShareModal(false);
     setShareEmail("");
     setSelectedFile(null);
