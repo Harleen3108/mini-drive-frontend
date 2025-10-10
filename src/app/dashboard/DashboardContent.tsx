@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -75,43 +75,6 @@ export default function DashboardContent() {
     }
   }, [isDarkMode]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push("/");
-        return;
-      }
-
-      const { data: userData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      setUser(userData);
-
-      if (userData?.role === "admin") {
-        await loadAdminData();
-      } else {
-        await loadUserFiles(session.user.id);
-      }
-
-      await loadSharedFiles(session.user.id);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadUserFiles = async (userId: string) => {
     const { data: filesData } = await supabase
       .from("files")
@@ -160,6 +123,44 @@ export default function DashboardContent() {
     setAllUsers(usersData || []);
   };
 
+  // Define loadData with useCallback to fix the useEffect dependency warning
+  const loadData = useCallback(async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push("/");
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      setUser(userData);
+
+      if (userData?.role === "admin") {
+        await loadAdminData();
+      } else {
+        await loadUserFiles(session.user.id);
+      }
+
+      await loadSharedFiles(session.user.id);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [router]); // Add router as dependency since it's used inside
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Now loadData is properly included as a dependency
+
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -181,7 +182,8 @@ export default function DashboardContent() {
         try {
           const base64Data = e.target?.result as string;
 
-          const { data, error } = await supabase
+          // Remove unused 'data' variable to fix ESLint warning
+          const { error } = await supabase
             .from("files")
             .insert([
               {
