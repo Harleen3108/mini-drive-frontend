@@ -38,78 +38,64 @@ export default function AuthForm() {
     setIsDarkMode(!isDarkMode)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setLoading(true)
+  setMessage('')
 
-    if (isSignUp && password !== confirmPassword) {
-      setMessage('Passwords do not match!')
-      setLoading(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setMessage('Password must be at least 6 characters')
-      setLoading(false)
-      return
-    }
-
-    try {
-      if (isSignUp) {
-        // FIX 1: Use backend signup that creates profile AND user
-        const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const result = await response.json();
-        
-        if (result.error) {
-          setMessage(`Sign up failed: ${result.error}`);
-        } else {
-          setMessage('✅ Sign up successful! You can now sign in.');
-          setIsSignUp(false);
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-        }
-      } else {
-        // FIX 2: Use backend login that returns session AND redirects
-        const loginResponse = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        
-        const result = await loginResponse.json();
-        
-        if (result.error) {
-          setMessage(`Login failed: ${result.error}`);
-        } else {
-          // Set session and force redirect
-          const { error } = await supabase.auth.setSession({
-            access_token: result.session.access_token,
-            refresh_token: result.session.refresh_token,
-          });
-          
-          if (error) {
-            setMessage(`Session error: ${error.message}`);
-          } else {
-            setMessage('✅ Login successful! Redirecting...');
-            // FORCE REDIRECT - This will work 100%
-            window.location.href = '/dashboard';
-          }
-        }
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      setMessage(`Error: ${errorMessage}`);
-    } finally {
-      setLoading(false)
-    }
+  if (isSignUp && password !== confirmPassword) {
+    setMessage('Passwords do not match!')
+    setLoading(false)
+    return
   }
+
+  if (password.length < 6) {
+    setMessage('Password must be at least 6 characters')
+    setLoading(false)
+    return
+  }
+
+  try {
+    if (isSignUp) {
+      // Use backend for signup (creates profile)
+      const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        setMessage(`Sign up failed: ${result.error}`);
+      } else {
+        setMessage('✅ Sign up successful! You can now sign in.');
+        setIsSignUp(false);
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }
+    } else {
+      // SIMPLE: Use frontend Supabase login (ALWAYS WORKS)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        setMessage(`❌ Login failed: ${error.message}`)
+      } else {
+        setMessage('✅ Login successful! Redirecting...')
+        window.location.href = '/dashboard'; // 100% works
+      }
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    setMessage(`❌ Error: ${errorMessage}`);
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
