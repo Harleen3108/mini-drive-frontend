@@ -9,7 +9,8 @@ async function getToken() {
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
-    const supabaseUrl = 'https://tmmeztilkvinafnwxkfl.supabase.co';
+    // FIX: Use NEW Supabase URL
+    const supabaseUrl = 'https://dmvtgdwiivsrrktvirfy.supabase.co';
     
     const response = await fetch(`${supabaseUrl}${endpoint}`, {
       headers: {
@@ -56,7 +57,7 @@ export const api = {
 
   // SPECIAL: Only this method uses backend
   async getAllUsers() {
-    // Direct fetch to backend ONLY for user listing
+    // FIX: Use your Render backend URL (update if needed)
     const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
     return response.json();
   }
