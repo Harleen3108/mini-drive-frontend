@@ -8,19 +8,21 @@ async function getToken() {
 async function getToken() {
   const { supabase } = await import('@/lib/supabase/client');
   const { data: { session } } = await supabase.auth.getSession();
-  
-  // ADD THIS DEBUG LINE:
-  console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL);
-  
   return session?.access_token;
 }
-// API client
+
+// API client - use direct Supabase for auth, backend for files
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
-    const backendUrl = 'https://mini-drive-backend-mzyb.onrender.com';
     
-    const response = await fetch(`${backendUrl}${endpoint}`, {
+    // Use backend only for specific endpoints
+    const useBackend = endpoint.startsWith('/api/files') || endpoint === '/api/users';
+    const baseUrl = useBackend 
+      ? 'https://mini-drive-backend-mzyb.onrender.com'
+      : 'https://tmmeztilkvinafnwxkfl.supabase.co';
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -30,13 +32,11 @@ export const api = {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `API error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     return response.json();
   },
-
   // Get user's files
   async getFiles() {
     return this.request('/api/files');

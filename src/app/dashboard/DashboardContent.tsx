@@ -275,7 +275,7 @@ export default function DashboardContent() {
     setShowShareModal(true);
   };
 
-const executeShare = async () => {
+  const executeShare = async () => {
   if (!selectedFile || !shareEmail) return;
 
   try {
@@ -284,36 +284,28 @@ const executeShare = async () => {
 
     console.log("🔍 DEBUG: Looking for user:", shareEmail);
 
-    // FIX: Call your backend API instead of Supabase directly
+    // FIX: Direct fetch to backend for users only
     const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
     const allUsers = await response.json();
     
     console.log("📋 ALL REGISTERED USERS FROM BACKEND:", allUsers);
 
-    // Find the specific user from the backend response
+    // Rest of your sharing code remains the same...
+    const targetUser = allUsers.find((u: { email: string; }) => 
+      u.email.toLowerCase() === shareEmail.toLowerCase()
+    );
 
-    console.log("🎯 TARGET USER RESULT:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
-      ));
-
-    if (!allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
-    )) {
-      console.log("🚫 USER NOT FOUND - Available users:", allUsers?.map((u: { email: any; }) => u.email));
-      alert(
-        `User "${shareEmail}" is not registered yet! 🚫\n\nAvailable users: ${allUsers?.map((u: { email: any; }) => u.email).join(', ')}`
-      );
+    if (!targetUser) {
+      alert(`User "${shareEmail}" is not registered!`);
       return;
     }
 
-    // Rest of your sharing code remains the same...
-    console.log("Found user:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
-      ));
-
+    // Continue with Supabase for the actual sharing...
     const { error: shareError } = await supabase.from("file_shares").insert([
       {
         file_id: selectedFile.id,
         shared_by: session.user.id,
-        shared_with: (allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
-        )).id,
+        shared_with: targetUser.id,
         permission: sharePermission,
       },
     ]);
@@ -324,12 +316,67 @@ const executeShare = async () => {
     setShowShareModal(false);
     setShareEmail("");
     setSelectedFile(null);
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Share failed:", error);
     const errorMessage = error instanceof Error ? error.message : 'Share failed';
     alert("Share failed: " + errorMessage);
   }
 };
+// const executeShare = async () => {
+//   if (!selectedFile || !shareEmail) return;
+
+//   try {
+//     const { data: { session } } = await supabase.auth.getSession();
+//     if (!session) return;
+
+//     console.log("🔍 DEBUG: Looking for user:", shareEmail);
+
+//     // FIX: Call your backend API instead of Supabase directly
+//     const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
+//     const allUsers = await response.json();
+    
+//     console.log("📋 ALL REGISTERED USERS FROM BACKEND:", allUsers);
+
+//     // Find the specific user from the backend response
+
+//     console.log("🎯 TARGET USER RESULT:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+//       ));
+
+//     if (!allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+//     )) {
+//       console.log("🚫 USER NOT FOUND - Available users:", allUsers?.map((u: { email: any; }) => u.email));
+//       alert(
+//         `User "${shareEmail}" is not registered yet! 🚫\n\nAvailable users: ${allUsers?.map((u: { email: any; }) => u.email).join(', ')}`
+//       );
+//       return;
+//     }
+
+//     // Rest of your sharing code remains the same...
+//     console.log("Found user:", allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+//       ));
+
+//     const { error: shareError } = await supabase.from("file_shares").insert([
+//       {
+//         file_id: selectedFile.id,
+//         shared_by: session.user.id,
+//         shared_with: (allUsers.find((u: User) => u.email.toLowerCase() === shareEmail.toLowerCase()
+//         )).id,
+//         permission: sharePermission,
+//       },
+//     ]);
+
+//     if (shareError) throw shareError;
+
+//     alert(`✅ File shared successfully with ${shareEmail}!`);
+//     setShowShareModal(false);
+//     setShareEmail("");
+//     setSelectedFile(null);
+//   } catch (error: unknown) {
+//     console.error("Share failed:", error);
+//     const errorMessage = error instanceof Error ? error.message : 'Share failed';
+//     alert("Share failed: " + errorMessage);
+//   }
+// };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
