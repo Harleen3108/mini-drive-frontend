@@ -1,16 +1,20 @@
-// API client - use Supabase for auth, backend only for custom APIs
+// Helper to get Supabase token
+async function getToken() {
+  const { supabase } = await import('@/lib/supabase/client');
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token;
+}
+
+// API client - use Supabase for everything except getting user list
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
     
-    // USE SUPABASE FOR AUTH, BACKEND FOR OTHER STUFF
-    const isAuthEndpoint = endpoint.includes('/auth') || 
-                          endpoint === '/api/user' || 
-                          endpoint === '/api/users' && options.method === 'POST';
-    
-    const baseUrl = isAuthEndpoint 
-      ? 'https://tmmeztilkvinafnwxkfl.supabase.co' // Your Supabase URL
-      : 'https://mini-drive-backend-mzyb.onrender.com'; // Your backend
+    // USE BACKEND ONLY FOR GETTING USER LIST, EVERYTHING ELSE USE SUPABASE
+    const useBackend = endpoint === '/api/users' && !options.method;
+    const baseUrl = useBackend 
+      ? 'https://mini-drive-backend-mzyb.onrender.com' // Your backend
+      : 'https://tmmeztilkvinafnwxkfl.supabase.co'; // Your Supabase URL
     
     const response = await fetch(`${baseUrl}${endpoint}`, {
       headers: {
@@ -29,7 +33,7 @@ export const api = {
     return response.json();
   },
 
-  // Get user's files - use backend
+  // Get user's files - use Supabase
   async getFiles() {
     return this.request('/api/files');
   },
@@ -39,7 +43,7 @@ export const api = {
     return this.request('/api/user');
   },
 
-  // Upload file - use backend
+  // Upload file - use Supabase
   async uploadFile(fileData) {
     return this.request('/api/files', {
       method: 'POST',
@@ -47,10 +51,20 @@ export const api = {
     });
   },
 
-  // Delete file - use backend
+  // Delete file - use Supabase
   async deleteFile(fileId) {
     return this.request(`/api/files/${fileId}`, {
       method: 'DELETE'
     });
+  },
+
+  // Get all users - uses backend (for sharing)
+  async getAllUsers() {
+    return this.request('/api/users');
+  },
+
+  // Add test file - use Supabase
+  async addTestFile() {
+    return this.request('/api/test-file', { method: 'POST' });
   }
 };
