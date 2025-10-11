@@ -9,8 +9,8 @@ async function getToken() {
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
-    // FIX: Use NEW Supabase URL
-    const supabaseUrl = 'https://dmvtgdwiivsrrktvirfy.supabase.co';    
+    const supabaseUrl = 'https://dmvtgdwiivsrrktvirfy.supabase.co';
+    
     const response = await fetch(`${supabaseUrl}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -54,10 +54,14 @@ export const api = {
     return this.request('/api/test-file', { method: 'POST' });
   },
 
-  // SPECIAL: Only this method uses backend
+  // FIX: Use your actual backend URL
   async getAllUsers() {
-    // FIX: Use your Render backend URL (update if needed)
-    const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
+    // Replace with your actual Render backend URL
+    const backendUrl = 'https://mini-drive-backend-mzyb.onrender.com';
+    const response = await fetch(`${backendUrl}/api/users`);
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status}`);
+    }
     return response.json();
   }
 };

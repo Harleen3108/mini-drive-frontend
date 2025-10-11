@@ -1,17 +1,17 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function AuthForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const router = useRouter();
 
   // Load theme preference on mount
   useEffect(() => {
@@ -35,112 +35,158 @@ export default function AuthForm() {
   }, [isDarkMode]);
 
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode)
-  }
+    setIsDarkMode(!isDarkMode);
+  };
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setMessage('')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage("");
 
-  // Basic validation
-  if (isSignUp && password !== confirmPassword) {
-    setMessage('Passwords do not match!')
-    setLoading(false)
-    return
-  }
+    // Basic validation
+    if (isSignUp && password !== confirmPassword) {
+      setMessage("Passwords do not match!");
+      setLoading(false);
+      return;
+    }
 
-  try {
-    if (isSignUp) {
-      // SIMPLE Supabase signup
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      
-      if (error) {
-        setMessage(`Sign up failed: ${error.message}`)
-      } else if (data.user) {
-        // Create profile
-        await fetch('/api/create-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: data.user.id, email })
-        });
-        
-        setMessage('✅ Sign up successful! Check your email.');
-        setIsSignUp(false);
-      }
-    } else {
-      // SIMPLE Supabase login
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      
-      if (error) {
-        setMessage(`Login failed: ${error.message}`)
+    try {
+      if (isSignUp) {
+        // SIMPLE Supabase signup
+        const { data, error } = await supabase.auth.signUp({ email, password });
+
+        if (error) {
+          setMessage(`Sign up failed: ${error.message}`);
+        } else if (data.user) {
+          // Create profile - with retry logic
+          let profileCreated = false;
+          let retries = 3;
+
+          while (!profileCreated && retries > 0) {
+            try {
+              const profileResponse = await fetch(
+                "https://mini-drive-backend-mzyb.onrender.com",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id: data.user.id, email }),
+                }
+              );
+
+              const profileResult = await profileResponse.json();
+
+              if (profileResult.success) {
+                profileCreated = true;
+                setMessage("✅ Sign up successful! You can now sign in.");
+                setIsSignUp(false);
+              } else {
+                retries--;
+                if (retries > 0) {
+                  await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+                }
+              }
+            } catch (profileError) {
+              console.error("Profile creation error:", profileError);
+              retries--;
+            }
+          }
+
+          if (!profileCreated) {
+            setMessage(
+              "✅ Sign up successful, but profile setup had issues. Please try signing in."
+            );
+            setIsSignUp(false);
+          }
+        }
       } else {
-        setMessage('✅ Login successful! Redirecting...')
-        window.location.href = '/dashboard';
+        // Sign in logic
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) {
+          setMessage(`Sign in failed: ${error.message}`);
+        } else {
+          setMessage("✅ Sign in successful! Redirecting...");
+          router.push("/dashboard");
+        }
       }
+    } catch (err) {
+      setMessage("An unexpected error occurred.");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      setMessage(`Error: ${error.message}`);
-    } else {
-      setMessage('An unknown error occurred.');
-    }
-  } finally {
-    setLoading(false)
-  }
-}
+  };
 
   return (
-    <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
-      isDarkMode 
-        ? 'bg-gray-800 border-gray-700' 
-        : 'bg-white border-gray-200'
-    }`}>
+    <div
+      className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
+        isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+      }`}
+    >
       {/* Header with Theme Toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 sm:p-2.5 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <svg
+              className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
               <path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
             </svg>
           </div>
           <div>
-            <h2 className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} text-center`}>
+            <h2
+              className={`text-xl sm:text-2xl font-bold ${
+                isDarkMode ? "text-white" : "text-gray-900"
+              } text-center`}
+            >
               Mini Drive
             </h2>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} font-medium hidden sm:block`}>
+            <p
+              className={`text-xs ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              } font-medium hidden sm:block`}
+            >
               Secure File Management
             </p>
           </div>
         </div>
-        
+
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
           className={`p-2 rounded-lg transition-colors border ${
-            isDarkMode 
-              ? 'bg-gray-700 hover:bg-gray-600 text-yellow-400 border-gray-600' 
-              : 'bg-gray-200 hover:bg-gray-300 text-gray-700 border-gray-300'
+            isDarkMode
+              ? "bg-gray-700 hover:bg-gray-600 text-yellow-400 border-gray-600"
+              : "bg-gray-200 hover:bg-gray-300 text-gray-700 border-gray-300"
           }`}
           aria-label="Toggle theme"
         >
-          {isDarkMode ? '☀️' : '🌙'}
+          {isDarkMode ? "☀️" : "🌙"}
         </button>
       </div>
 
       <div className="text-center pt-2 sm:pt-4">
-        <p className={`font-medium text-sm sm:text-base ${
-          isDarkMode ? 'text-gray-400' : 'text-gray-600'
-        }`}>
-          {isSignUp ? 'Create your account' : 'Sign in to your account'}
+        <p
+          className={`font-medium text-sm sm:text-base ${
+            isDarkMode ? "text-gray-400" : "text-gray-600"
+          }`}
+        >
+          {isSignUp ? "Create your account" : "Sign in to your account"}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         <div>
-          <label htmlFor="email" className={`block text-sm font-semibold mb-2 ${
-            isDarkMode ? 'text-gray-300' : 'text-gray-700'
-          }`}>
+          <label
+            htmlFor="email"
+            className={`block text-sm font-semibold mb-2 ${
+              isDarkMode ? "text-gray-300" : "text-gray-700"
+            }`}
+          >
             Email Address
           </label>
           <input
@@ -152,16 +198,19 @@ export default function AuthForm() {
             required
             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium transition-all ${
               isDarkMode
-                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
             }`}
           />
         </div>
 
         <div>
-          <label htmlFor="password" className={`block text-sm font-semibold mb-2 ${
-            isDarkMode ? 'text-gray-300' : 'text-gray-700'
-          }`}>
+          <label
+            htmlFor="password"
+            className={`block text-sm font-semibold mb-2 ${
+              isDarkMode ? "text-gray-300" : "text-gray-700"
+            }`}
+          >
             Password
           </label>
           <input
@@ -173,17 +222,20 @@ export default function AuthForm() {
             required
             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium transition-all ${
               isDarkMode
-                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
             }`}
           />
         </div>
 
         {isSignUp && (
           <div>
-            <label htmlFor="confirmPassword" className={`block text-sm font-semibold mb-2 ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-700'
-            }`}>
+            <label
+              htmlFor="confirmPassword"
+              className={`block text-sm font-semibold mb-2 ${
+                isDarkMode ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
               Confirm Password
             </label>
             <input
@@ -195,23 +247,25 @@ export default function AuthForm() {
               required
               className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium transition-all ${
                 isDarkMode
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                  ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
               }`}
             />
           </div>
         )}
 
         {message && (
-          <div className={`p-3 rounded-lg text-sm font-medium border ${
-            message.includes('✅') || message.includes('successful')
-              ? isDarkMode
-                ? 'bg-green-900/30 text-green-300 border-green-800'
-                : 'bg-green-100 text-green-800 border-green-200'
-              : isDarkMode
-              ? 'bg-red-900/30 text-red-300 border-red-800'
-              : 'bg-red-100 text-red-800 border-red-200'
-          }`}>
+          <div
+            className={`p-3 rounded-lg text-sm font-medium border ${
+              message.includes("✅") || message.includes("successful")
+                ? isDarkMode
+                  ? "bg-green-900/30 text-green-300 border-green-800"
+                  : "bg-green-100 text-green-800 border-green-200"
+                : isDarkMode
+                ? "bg-red-900/30 text-red-300 border-red-800"
+                : "bg-red-100 text-red-800 border-red-200"
+            }`}
+          >
             {message}
           </div>
         )}
@@ -221,38 +275,44 @@ export default function AuthForm() {
           disabled={loading}
           className={`w-full px-4 py-3 text-white rounded-lg font-semibold text-sm shadow-sm hover:shadow-md transition-all duration-200 ${
             loading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700'
-          } ${isDarkMode ? 'shadow-blue-500/10' : ''}`}
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          } ${isDarkMode ? "shadow-blue-500/10" : ""}`}
         >
-          {loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+          {loading ? "Please wait..." : isSignUp ? "Sign Up" : "Sign In"}
         </button>
       </form>
 
       <div className="text-center">
         <button
           onClick={() => {
-            setIsSignUp(!isSignUp)
-            setMessage('')
-            setPassword('')
-            setConfirmPassword('')
+            setIsSignUp(!isSignUp);
+            setMessage("");
+            setPassword("");
+            setConfirmPassword("");
           }}
           className={`text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors ${
-            isDarkMode ? 'text-blue-400 hover:text-blue-300' : ''
+            isDarkMode ? "text-blue-400 hover:text-blue-300" : ""
           }`}
         >
-          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+          {isSignUp
+            ? "Already have an account? Sign in"
+            : "Don't have an account? Sign up"}
         </button>
       </div>
 
-      <div className={`p-3 sm:p-4 text-xs sm:text-sm rounded-lg border ${
-        isDarkMode 
-          ? 'text-gray-400 bg-gray-700/50 border-gray-600' 
-          : 'text-gray-600 bg-gray-50 border-gray-200'
-      }`}>
-        <p className={`font-semibold mb-1 sm:mb-2 ${
-          isDarkMode ? 'text-white' : 'text-gray-900'
-        }`}>
+      <div
+        className={`p-3 sm:p-4 text-xs sm:text-sm rounded-lg border ${
+          isDarkMode
+            ? "text-gray-400 bg-gray-700/50 border-gray-600"
+            : "text-gray-600 bg-gray-50 border-gray-200"
+        }`}
+      >
+        <p
+          className={`font-semibold mb-1 sm:mb-2 ${
+            isDarkMode ? "text-white" : "text-gray-900"
+          }`}
+        >
           Demo Information:
         </p>
         <p>• Password must be 6+ characters</p>
@@ -260,5 +320,5 @@ export default function AuthForm() {
         <p>• Try: test@example.com / test123</p>
       </div>
     </div>
-  )
+  );
 }
