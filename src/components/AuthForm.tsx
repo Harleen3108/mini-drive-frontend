@@ -38,73 +38,78 @@ export default function AuthForm() {
     setIsDarkMode(!isDarkMode)
   }
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setLoading(true)
-  setMessage('')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
 
-  if (isSignUp && password !== confirmPassword) {
-    setMessage('Passwords do not match!')
-    setLoading(false)
-    return
-  }
+    if (isSignUp && password !== confirmPassword) {
+      setMessage('Passwords do not match!')
+      setLoading(false)
+      return
+    }
 
-  if (password.length < 6) {
-    setMessage('Password must be at least 6 characters')
-    setLoading(false)
-    return
-  }
+    if (password.length < 6) {
+      setMessage('Password must be at least 6 characters')
+      setLoading(false)
+      return
+    }
 
-  try {
-    if (isSignUp) {
-      // USE TEMPORARY BYPASS FOR SIGNUP
-      const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      const result = await response.json();
-      
-      if (result.error) {
-        setMessage(`Sign up failed: ${result.error}`);
-      } else {
-        setMessage('Sign up successful! You can now sign in.');
-        setIsSignUp(false);
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-      }
-    } else {
-      // USE TEMPORARY BYPASS FOR LOGIN
-      const loginResponse = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      const result = await loginResponse.json();
-      
-      if (result.error) {
-        setMessage(`Login failed: ${result.error}`);
-      } else {
-        // Set the session manually
-        const { data: { session } } = await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
+    try {
+      if (isSignUp) {
+        // FIX 1: Use backend signup that creates profile AND user
+        const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         });
         
-        setMessage('Login successful! Redirecting...');
-        setTimeout(() => router.push('/dashboard'), 1000);
+        const result = await response.json();
+        
+        if (result.error) {
+          setMessage(`Sign up failed: ${result.error}`);
+        } else {
+          setMessage('✅ Sign up successful! You can now sign in.');
+          setIsSignUp(false);
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+        }
+      } else {
+        // FIX 2: Use backend login that returns session AND redirects
+        const loginResponse = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const result = await loginResponse.json();
+        
+        if (result.error) {
+          setMessage(`Login failed: ${result.error}`);
+        } else {
+          // Set session and force redirect
+          const { error } = await supabase.auth.setSession({
+            access_token: result.session.access_token,
+            refresh_token: result.session.refresh_token,
+          });
+          
+          if (error) {
+            setMessage(`Session error: ${error.message}`);
+          } else {
+            setMessage('✅ Login successful! Redirecting...');
+            // FORCE REDIRECT - This will work 100%
+            window.location.href = '/dashboard';
+          }
+        }
       }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setMessage(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false)
     }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    setMessage(`Error: ${errorMessage}`);
-  } finally {
-    setLoading(false)
   }
-}
 
   return (
     <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
@@ -140,15 +145,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           }`}
           aria-label="Toggle theme"
         >
-          {isDarkMode ? (
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-          )}
+          {isDarkMode ? '☀️' : '🌙'}
         </button>
       </div>
 
@@ -228,7 +225,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
         {message && (
           <div className={`p-3 rounded-lg text-sm font-medium border ${
-            message.includes('successful') 
+            message.includes('✅') || message.includes('successful')
               ? isDarkMode
                 ? 'bg-green-900/30 text-green-300 border-green-800'
                 : 'bg-green-100 text-green-800 border-green-200'
