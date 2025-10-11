@@ -57,7 +57,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     if (isSignUp) {
-      // USE TEMPORARY BYPASS INSTEAD OF SUPABASE SIGNUP
+      // USE TEMPORARY BYPASS FOR SIGNUP
       const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,28 +76,23 @@ const handleSubmit = async (e: React.FormEvent) => {
         setConfirmPassword('');
       }
     } else {
-      // LOGIN - Use regular Supabase (should work)
-      const { data: signInData, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        setMessage(`Login failed: ${error.message}`)
-      } else if (signInData.user) {
-        // Ensure profile exists by calling backend
-        try {
-          await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: signInData.user.id,
-              email: email
-            })
-          });
-        } catch (err) {
-          console.log('Profile check failed, but login continues');
-        }
+      // USE TEMPORARY BYPASS FOR LOGIN
+      const loginResponse = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const result = await loginResponse.json();
+      
+      if (result.error) {
+        setMessage(`Login failed: ${result.error}`);
+      } else {
+        // Set the session manually
+        const { data: { session } } = await supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
         
         setMessage('Login successful! Redirecting...');
         setTimeout(() => router.push('/dashboard'), 1000);
