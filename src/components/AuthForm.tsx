@@ -43,55 +43,48 @@ export default function AuthForm() {
   setLoading(true)
   setMessage('')
 
+  // Basic validation
   if (isSignUp && password !== confirmPassword) {
     setMessage('Passwords do not match!')
     setLoading(false)
     return
   }
 
-  if (password.length < 6) {
-    setMessage('Password must be at least 6 characters')
-    setLoading(false)
-    return
-  }
-
   try {
     if (isSignUp) {
-      // Use backend for signup (creates profile)
-      const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      // SIMPLE Supabase signup
+      const { data, error } = await supabase.auth.signUp({ email, password })
       
-      const result = await response.json();
-      
-      if (result.error) {
-        setMessage(`Sign up failed: ${result.error}`);
-      } else {
-        setMessage('✅ Sign up successful! You can now sign in.');
+      if (error) {
+        setMessage(`Sign up failed: ${error.message}`)
+      } else if (data.user) {
+        // Create profile
+        await fetch('/api/create-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: data.user.id, email })
+        });
+        
+        setMessage('✅ Sign up successful! Check your email.');
         setIsSignUp(false);
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
       }
     } else {
-      // SIMPLE: Use frontend Supabase login (ALWAYS WORKS)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
+      // SIMPLE Supabase login
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      
       if (error) {
-        setMessage(`❌ Login failed: ${error.message}`)
+        setMessage(`Login failed: ${error.message}`)
       } else {
         setMessage('✅ Login successful! Redirecting...')
-        window.location.href = '/dashboard'; // 100% works
+        window.location.href = '/dashboard';
       }
     }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    setMessage(`❌ Error: ${errorMessage}`);
+  } catch (error) {
+    if (error instanceof Error) {
+      setMessage(`Error: ${error.message}`);
+    } else {
+      setMessage('An unknown error occurred.');
+    }
   } finally {
     setLoading(false)
   }
