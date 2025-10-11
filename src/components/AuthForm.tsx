@@ -57,35 +57,26 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     if (isSignUp) {
-      const { data: signUpData, error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
-      if (error) {
-        setMessage(`Sign up failed: ${error.message}`)
-      } else if (signUpData.user) {
-  // Call backend to create profile
-  try {
-    await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: signUpData.user.id,
-        email: email
-      })
-    });
-  } catch (err) {
-    console.log('Profile creation might have failed, but user can still login');
-  }
-  
-  setMessage('Sign up successful! You can now sign in.');
-  setIsSignUp(false);
-  setEmail('');
-  setPassword('');
-  setConfirmPassword('');
-}
+      // USE TEMPORARY BYPASS INSTEAD OF SUPABASE SIGNUP
+      const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/temp-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        setMessage(`Sign up failed: ${result.error}`);
+      } else {
+        setMessage('Sign up successful! You can now sign in.');
+        setIsSignUp(false);
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }
     } else {
+      // LOGIN - Use regular Supabase (should work)
       const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -94,23 +85,23 @@ const handleSubmit = async (e: React.FormEvent) => {
       if (error) {
         setMessage(`Login failed: ${error.message}`)
       } else if (signInData.user) {
-  // Ensure profile exists by calling backend
-  try {
-    await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: signInData.user.id,
-        email: email
-      })
-    });
-  } catch (err) {
-    console.log('Profile check failed, but login continues');
-  }
-  
-  setMessage('Login successful! Redirecting...');
-  setTimeout(() => router.push('/dashboard'), 1000);
-}
+        // Ensure profile exists by calling backend
+        try {
+          await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: signInData.user.id,
+              email: email
+            })
+          });
+        } catch (err) {
+          console.log('Profile check failed, but login continues');
+        }
+        
+        setMessage('Login successful! Redirecting...');
+        setTimeout(() => router.push('/dashboard'), 1000);
+      }
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
