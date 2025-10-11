@@ -1,26 +1,16 @@
-// Helper to get Supabase token
-
-async function getToken() {
-  const { supabase } = await import('@/lib/supabase/client');
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token;
-}
-async function getToken() {
-  const { supabase } = await import('@/lib/supabase/client');
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token;
-}
-
-// API client - use direct Supabase for auth, backend for files
+// API client - use Supabase for auth, backend only for custom APIs
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
     
-    // Use backend only for specific endpoints
-    const useBackend = endpoint.startsWith('/api/files') || endpoint === '/api/users';
-    const baseUrl = useBackend 
-      ? 'https://mini-drive-backend-mzyb.onrender.com'
-      : 'https://tmmeztilkvinafnwxkfl.supabase.co';
+    // USE SUPABASE FOR AUTH, BACKEND FOR OTHER STUFF
+    const isAuthEndpoint = endpoint.includes('/auth') || 
+                          endpoint === '/api/user' || 
+                          endpoint === '/api/users' && options.method === 'POST';
+    
+    const baseUrl = isAuthEndpoint 
+      ? 'https://tmmeztilkvinafnwxkfl.supabase.co' // Your Supabase URL
+      : 'https://mini-drive-backend-mzyb.onrender.com'; // Your backend
     
     const response = await fetch(`${baseUrl}${endpoint}`, {
       headers: {
@@ -32,22 +22,24 @@ export const api = {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
     return response.json();
   },
-  // Get user's files
+
+  // Get user's files - use backend
   async getFiles() {
     return this.request('/api/files');
   },
 
-  // Get user profile
+  // Get user profile - use Supabase
   async getUser() {
     return this.request('/api/user');
   },
 
-  // Upload file
+  // Upload file - use backend
   async uploadFile(fileData) {
     return this.request('/api/files', {
       method: 'POST',
@@ -55,15 +47,10 @@ export const api = {
     });
   },
 
-  // Delete file
+  // Delete file - use backend
   async deleteFile(fileId) {
     return this.request(`/api/files/${fileId}`, {
       method: 'DELETE'
     });
-  },
-
-  // Add test file
-  async addTestFile() {
-    return this.request('/api/test-file', { method: 'POST' });
   }
 };
