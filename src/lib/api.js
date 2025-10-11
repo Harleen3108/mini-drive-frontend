@@ -10,8 +10,7 @@ export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
     // FIX: Use NEW Supabase URL
-    const supabaseUrl = 'https://dmvtgdwiivsrrktvirfy.supabase.co';
-    
+    const supabaseUrl = 'https://dmvtgdwiivsrrktvirfy.supabase.co';    
     const response = await fetch(`${supabaseUrl}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
