@@ -5,18 +5,13 @@ async function getToken() {
   return session?.access_token;
 }
 
-// API client - use Supabase for everything except getting user list
+// SIMPLE FIX: Use ONLY Supabase for everything
 export const api = {
   async request(endpoint, options = {}) {
     const token = await getToken();
+    const supabaseUrl = 'https://tmmeztilkvinafnwxkfl.supabase.co';
     
-    // USE BACKEND ONLY FOR GETTING USER LIST, EVERYTHING ELSE USE SUPABASE
-    const useBackend = endpoint === '/api/users' && !options.method;
-    const baseUrl = useBackend 
-      ? 'https://mini-drive-backend-mzyb.onrender.com' // Your backend
-      : 'https://tmmeztilkvinafnwxkfl.supabase.co'; // Your Supabase URL
-    
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetch(`${supabaseUrl}${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -33,17 +28,15 @@ export const api = {
     return response.json();
   },
 
-  // Get user's files - use Supabase
+  // All methods use Supabase
   async getFiles() {
     return this.request('/api/files');
   },
 
-  // Get user profile - use Supabase
   async getUser() {
     return this.request('/api/user');
   },
 
-  // Upload file - use Supabase
   async uploadFile(fileData) {
     return this.request('/api/files', {
       method: 'POST',
@@ -51,20 +44,20 @@ export const api = {
     });
   },
 
-  // Delete file - use Supabase
   async deleteFile(fileId) {
     return this.request(`/api/files/${fileId}`, {
       method: 'DELETE'
     });
   },
 
-  // Get all users - uses backend (for sharing)
-  async getAllUsers() {
-    return this.request('/api/users');
-  },
-
-  // Add test file - use Supabase
   async addTestFile() {
     return this.request('/api/test-file', { method: 'POST' });
+  },
+
+  // SPECIAL: Only this method uses backend
+  async getAllUsers() {
+    // Direct fetch to backend ONLY for user listing
+    const response = await fetch('https://mini-drive-backend-mzyb.onrender.com/api/users');
+    return response.json();
   }
 };
