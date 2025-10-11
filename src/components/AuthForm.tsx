@@ -38,92 +38,87 @@ export default function AuthForm() {
     setIsDarkMode(!isDarkMode)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setLoading(true)
+  setMessage('')
 
-    if (isSignUp && password !== confirmPassword) {
-      setMessage('Passwords do not match!')
-      setLoading(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setMessage('Password must be at least 6 characters')
-      setLoading(false)
-      return
-    }
-
-    try {
-      if (isSignUp) {
-        const { data: signUpData, error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-
-        if (error) {
-          setMessage(`Sign up failed: ${error.message}`)
-        } else if (signUpData.user) {
-          // Automatically create profile for new user
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: signUpData.user.id,
-                email: email,
-                role: 'user',
-                created_at: new Date().toISOString(),
-              }
-            ])
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError)
-          }
-
-          setMessage('Sign up successful! You can now sign in.')
-          setIsSignUp(false)
-          setEmail('')
-          setPassword('')
-          setConfirmPassword('')
-        }
-      } else {
-        const { data: signInData, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (error) {
-          setMessage(`Login failed: ${error.message}`)
-        } else if (signInData.user) {
-          // Ensure profile exists for this user
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert(
-              {
-                id: signInData.user.id,
-                email: email,
-                role: 'user',
-                created_at: new Date().toISOString(),
-              },
-              { onConflict: 'id' }
-            )
-
-          if (profileError) {
-            console.error('Profile upsert error:', profileError)
-          }
-
-          setMessage('Login successful! Redirecting...')
-          setTimeout(() => router.push('/dashboard'), 1000)
-        }
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      setMessage(`Error: ${errorMessage}`);
-    } finally {
-      setLoading(false)
-    }
+  if (isSignUp && password !== confirmPassword) {
+    setMessage('Passwords do not match!')
+    setLoading(false)
+    return
   }
+
+  if (password.length < 6) {
+    setMessage('Password must be at least 6 characters')
+    setLoading(false)
+    return
+  }
+
+  try {
+    if (isSignUp) {
+      const { data: signUpData, error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+
+      if (error) {
+        setMessage(`Sign up failed: ${error.message}`)
+      } else if (signUpData.user) {
+  // Call backend to create profile
+  try {
+    await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: signUpData.user.id,
+        email: email
+      })
+    });
+  } catch (err) {
+    console.log('Profile creation might have failed, but user can still login');
+  }
+  
+  setMessage('Sign up successful! You can now sign in.');
+  setIsSignUp(false);
+  setEmail('');
+  setPassword('');
+  setConfirmPassword('');
+}
+    } else {
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        setMessage(`Login failed: ${error.message}`)
+      } else if (signInData.user) {
+  // Ensure profile exists by calling backend
+  try {
+    await fetch('https://mini-drive-backend-mzyb.onrender.com/api/create-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: signInData.user.id,
+        email: email
+      })
+    });
+  } catch (err) {
+    console.log('Profile check failed, but login continues');
+  }
+  
+  setMessage('Login successful! Redirecting...');
+  setTimeout(() => router.push('/dashboard'), 1000);
+}
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    setMessage(`Error: ${errorMessage}`);
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <div className={`w-full max-w-md mx-4 sm:mx-auto p-6 sm:p-8 space-y-6 rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-200 ${
